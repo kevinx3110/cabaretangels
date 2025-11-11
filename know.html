@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cuestionario del Cabaret "Angels"</title>
+  <meta name="description" content="Cuestionario inmersivo tipo novela interactiva para repartir roles del Murder Mystery Cabaret Angels." />
+  <style>
+    :root{
+      --bg:#0a0d0a;               /* negro profundo */
+      --ink:#e7e5da;              /* marfil */
+      --muted:#bfb9a6;            /* hueso */
+      --gold:#caa95a;             /* dorado viejo */
+      --green:#1f553d;            /* verde botella */
+      --accent:#6fd1a7;           /* verde menta espectral */
+      --danger:#c24141;           /* rojo tenue */
+    }
+    html,body{height:100%;background:var(--bg);color:var(--ink);font-family: "Crimson Text", Georgia, serif;}
+    body{margin:0;}
+
+    /* Contenedor central */
+    .stage{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:48px 20px;position:relative;overflow:hidden;}
+
+    /* Marco art déco */
+    .frame{max-width:860px;width:100%;padding:40px 28px;position:relative;background:rgba(14,18,14,.7);backdrop-filter: blur(3px);border:1px solid color-mix(in oklab, var(--gold) 45%, transparent);}
+    .frame:before,.frame:after{content:"";position:absolute;inset:10px;border:1px solid var(--gold);pointer-events:none;mix-blend:screen;opacity:.5}
+    .frame:after{inset:20px;border-color:color-mix(in oklab,var(--gold) 70%, transparent)}
+
+    /* Cabecera */
+    .heading{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+    .badge{font-variant:small-caps;letter-spacing:.12em;color:var(--gold);border:1px solid var(--gold);padding:4px 10px}
+    .title{font-family: "Cinzel", "Times New Roman", serif;letter-spacing:.04em;margin:0;font-weight:600}
+
+    /* Texto narrativo */
+    .narration{color:var(--muted);font-style:italic;line-height:1.6;margin:16px 0 20px 0;min-height:3lh}
+
+    .card{margin:18px 0 10px 0}
+    .q{font-size:1.25rem;line-height:1.5;margin:0 0 12px 0}
+
+    .choices{display:grid;gap:10px}
+    .choices button{appearance:none;border:1px solid color-mix(in oklab,var(--ink) 35%, transparent);background:#111714;color:var(--ink);padding:12px 14px;text-align:left;cursor:pointer;transition:.2s;border-radius:2px}
+    .choices button:hover{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+    .choices button[data-picked="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .controls button,.controls a{background:#141a16;color:var(--ink);border:1px solid color-mix(in oklab,var(--ink) 35%, transparent);padding:10px 14px;cursor:pointer}
+    .controls button:hover,.controls a:hover{border-color:var(--gold)}
+
+    /* Input abierto */
+    .input-wrap{display:flex;gap:8px;flex-wrap:wrap}
+    .input{flex:1;min-width:240px;background:#0e130f;border:1px solid color-mix(in oklab,var(--ink) 35%, transparent);color:var(--ink);padding:12px}
+
+    /* Barra de progreso */
+    .progress{height:3px;background:#1a1f1b;margin:22px 0 8px 0;position:relative;overflow:hidden}
+    .progress>i{position:absolute;inset:0;transform-origin:left center;background:linear-gradient(90deg,var(--gold),var(--accent));}
+
+    /* Vignette verde para las visiones */
+    .vignette{position:fixed;inset:-10%;pointer-events:none;box-shadow:inset 0 0 220px 40px color-mix(in oklab, var(--green) 35%, transparent);opacity:.0;transition:.6s}
+    .vignette.on{opacity:1}
+
+    /* Glitch heading */
+    .glitch{position:relative;display:inline-block}
+    .glitch:before,.glitch:after{content:attr(data-text);position:absolute;left:0;top:0;opacity:.6;clip-path:inset(0 0 0 0)}
+    .glitch:before{transform:translate(1px,-1px);color:#78f5c6;mix-blend:screen}
+    .glitch:after{transform:translate(-1px,1px);color:#ff6d6d;mix-blend:screen}
+
+    /* Footer */
+    .footer{opacity:.6;font-size:.9rem;margin-top:18px}
+
+    /* Audio toggle */
+    .audio-toggle{position:fixed;right:14px;bottom:14px;z-index:5;background:#111713;border:1px solid var(--gold);color:var(--ink);padding:8px 12px;cursor:pointer}
+
+    /* Small helper chips */
+    .chip{display:inline-block;border:1px solid color-mix(in oklab,var(--muted) 40%, transparent);color:var(--muted);font-size:.8rem;padding:2px 8px;margin-left:6px}
+
+    @media (max-width:560px){
+      .frame{padding:28px 16px}
+      .q{font-size:1.1rem}
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500..800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="vignette" id="vignette"></div>
+  <main class="stage">
+    <section class="frame" aria-live="polite" aria-busy="false">
+      <header class="heading">
+        <div class="badge">Cabaret Angels</div>
+        <h1 class="title"><span class="glitch" data-text="Cuestionario">Cuestionario</span> del Cabaret</h1>
+      </header>
+
+      <div class="progress" aria-hidden="true"><i id="bar" style="transform:scaleX(0)"></i></div>
+
+      <p class="narration" id="narration">La pantalla parpadea. Una voz —ni humana ni metálica— pregunta: “¿Puedes oírme?”</p>
+
+      <article class="card" id="card">
+        <!-- Pregunta e interacciones inyectadas por JS -->
+      </article>
+
+      <div class="controls">
+        <button id="prevBtn" disabled>&larr; Atrás</button>
+        <button id="nextBtn">Siguiente &rarr;</button>
+        <button id="copyBtn" title="Copiar respuestas">Copiar respuestas</button>
+        <a id="downloadBtn" href="#" download="cuestionario-angels.json" title="Descargar JSON">Descargar JSON</a>
+      </div>
+
+      <p class="footer" id="footer">Consejo: responde con elegancia, no con prisa.</p>
+
+      <!-- Formulario Netlify opcional (oculto). Para activarlo, publica en Netlify. -->
+      <form name="cabaret" data-netlify="true" hidden id="netlifyForm"></form>
+    </section>
+  </main>
+
+  <audio id="ambience" loop preload="auto">
+    <!-- Reemplaza src por tu pista ambiente (jazz/ruido de cabaret). Debe ser un archivo accesible. -->
+    <!-- <source src="/audio/angels-ambiente.mp3" type="audio/mpeg"> -->
+  </audio>
+
+  <script>
+    // --- Utilidades de UI ---
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+    const state = {
+      i: 0,
+      answers: {},
+      started: Date.now(),
+    };
+
+    const questions = [
+      // Introducción narrativa
+      {
+        id: 'intro-0',
+        type: 'narration',
+        text: 'Perfecto… No te muevas. Te he estado buscando, pero no recuerdo por qué. Antes de empezar, necesito saber si eres real.'
+      },
+      // 1. Nombre
+      {
+        id: 'q1_nombre',
+        type: 'open',
+        label: 'Dime, ¿cuál es el nombre que usas cuando crees que nadie te escucha?',
+        placeholder: 'Escribe el nombre que te haga existir un poco más…',
+        required: true,
+        hint: 'No tiene que ser tu nombre real.'
+      },
+      // 2. Presentación / género
+      {
+        id: 'q2_genero',
+        type: 'choice',
+        label: 'Cuando los demás te miran, ¿qué prefieres que vean?',
+        options: [
+          'Algo Femenino',
+          'Algo Masculino',
+          'Algo que no puedan descifrar',
+          'No tiene importancia'
+        ],
+        hint: '“El cuerpo cambia. La voz miente. Pero el alma… ah, el alma no sabe actuar.”'
+      },
+      // 3. Edad-sombra
+      {
+        id: 'q3_edad',
+        type: 'open',
+        label: '¿Cuántos años tiene tu sombra?',
+        placeholder: 'Responde libremente. Nadie comprobará los documentos.',
+      },
+
+      // BLOQUE: Experimento / visiones
+      {id:'nar-1', type:'narration', text:'Quiero saber qué tan profundo puedes mirar sin parpadear. Prometo que solo duele si te resistes.'},
+
+      {
+        id: 'q4_veneno',
+        type: 'choice',
+        label: 'Frente a ti hay una copa con un líquido verde. Huele a menta y a promesa rota. ¿Qué haces?',
+        options: [
+          'Lo bebo antes que nadie',
+          'Lo preparo, aunque no sé para quién',
+          'Ya tengo el antídoto',
+          'No era para mí… ¿verdad?'
+        ],
+        tag: 'vision'
+      },
+      {
+        id: 'q5_mano',
+        type: 'choice',
+        label: 'Una mano se alza desde la penumbra. Hay tierra entre los dedos y raíces. ¿La tomas?',
+        options: [
+          'Sí, me encanta la tierra',
+          'No, ya enterré demasiadas cosas',
+          'Solo si se lava las manos... después'
+        ]
+      },
+      {
+        id: 'q6_espejo',
+        type: 'choice',
+        label: 'Un espejo respira frente a ti. Dentro, alguien sonríe un segundo después que tú. “¿Quién está fingiendo?”',
+        options: ['Yo','Él','Ninguno. Ya somos la misma persona']
+      },
+      {
+        id: 'q7_sombras',
+        type: 'choice',
+        label: 'Dos figuras discuten al fondo. No oyes las palabras, pero sabes que hablan de ti. ¿Te acercas?',
+        options: [
+          'Sí, quiero oír lo que niegan',
+          'No, prefiero imaginarlo',
+          'Ya sé lo que dicen'
+        ]
+      },
+      {
+        id: 'q8_cae',
+        type: 'choice',
+        label: 'La música se detiene. Un cuerpo cae. Nadie grita. Solo tú lo viste. “¿Qué sentiste?”',
+        options: ['Alivio','Curiosidad','Nada','Lo que todos sienten cuando algo termina: Silencio.']
+      },
+
+      // BLOQUE: hilos / destino / vínculos
+      {id:'nar-2', type:'narration', text:'Ya casi terminamos. Solo dime qué tipo de personaje serías… si esto fuera una historia. O tal vez lo sea.'},
+
+      {
+        id: 'q9_puerta',
+        type: 'choice',
+        label: 'Encuentras una carta con tu letra. Dice: “No abras la puerta”. ¿Qué haces?',
+        options: ['La obedezco','La quemo','La firmo otra vez','No sé escribir.']
+      },
+      {
+        id: 'q10_compania',
+        type: 'choice',
+        label: 'Una voz te pregunta: “¿Quieres seguir solo o compartir el peso?”',
+        options: [
+          'Solo. Nadie entiende mis pasos',
+          'Acompañado, aunque el otro no me vea',
+          'Ya vengo acompañado… Pero no recuerdo de quién'
+        ]
+      },
+      {
+        id: 'q11_susurro',
+        type: 'choice',
+        label: 'Un susurro se filtra por la grieta: “Miente bien. Nadie confía en los sinceros”. ¿Le haces caso?',
+        options: ['Sí','No','No recuerdo cómo se dice la verdad']
+      },
+      {
+        id: 'q12_pasado',
+        type: 'choice',
+        label: '¿Te gustaría tener un pasado compartido con alguien más?',
+        options: ['Sí, incluso si me odia.','No, ya tengo demasiadas versiones de mí']
+      },
+      {
+        id: 'q13_cuerda',
+        type: 'choice',
+        label: 'La cuerda del destino pende frente a ti. ¿Qué haces?',
+        options: ['La suelto, pero no cae','La jalo, pero no se mueve','Ya la corté hace tiempo']
+      },
+      {
+        id: 'q14_acompanante_mente',
+        type: 'open',
+        label: '¿Quién te acompaña en tus pensamientos?',
+        placeholder: 'Escribe un nombre, una figura, un silencio…'
+      },
+      {
+        id: 'q15_anhelos',
+        type: 'open',
+        label: '¿Tú aún tienes anhelos o ya se hundió en la desesperación?',
+        placeholder: 'Deja que la tinta diga lo que no dirías en voz alta'
+      },
+      {
+        id: 'q16_borrar',
+        type: 'open',
+        label: 'Si pudieras borrar un recuerdo, ¿cual sería?',
+        placeholder: 'Cuidado: algunos recuerdos sangran cuando se tocan'
+      },
+      {id:'outro', type:'narration', text:'Has respondido con… algo. No sabría llamarlo verdad. Tu nombre ha sido registrado. Tu reflejo ya no te pertenece. Nos vemos en el Cabaret, alma curiosa.'}
+    ];
+
+    // Render
+    const narration = $('#narration');
+    const card = $('#card');
+    const bar = $('#bar');
+    const vignette = $('#vignette');
+    const prevBtn = $('#prevBtn');
+    const nextBtn = $('#nextBtn');
+    const copyBtn = $('#copyBtn');
+    const dlBtn = $('#downloadBtn');
+    const footer = $('#footer');
+
+    function setProgress(){
+      const total = questions.length-1; // outro no cuenta al 100% exacto
+      const p = Math.max(0, Math.min(state.i/(total), 1));
+      bar.style.transform = `scaleX(${p})`;
+    }
+
+    function typewriter(el, text, speed=18){
+      el.innerHTML = '';
+      let i=0;
+      const timer = setInterval(()=>{
+        el.innerHTML = text.slice(0, ++i);
+        if(i>=text.length) clearInterval(timer);
+      }, speed);
+    }
+
+    function render(){
+      setProgress();
+      const q = questions[state.i];
+      // narración
+      if(q.type === 'narration'){
+        typewriter(narration, q.text);
+        card.innerHTML = '';
+        footer.textContent = 'Pulsa Siguiente cuando la voz termine de hablar.';
+        nextBtn.disabled = false; // permitir avanzar
+        prevBtn.disabled = state.i===0;
+        return;
+      }
+
+      // preguntas
+      narration.textContent = '';
+      prevBtn.disabled = state.i===0;
+      footer.textContent = '';
+
+      const wrap = document.createElement('div');
+      const label = document.createElement('h2');
+      label.className = 'q';
+      label.textContent = q.label;
+      wrap.appendChild(label);
+
+      if(q.type==='choice'){
+        const box = document.createElement('div');
+        box.className = 'choices';
+        q.options.forEach((opt, idx)=>{
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = opt;
+          if(state.answers[q.id] === opt) btn.dataset.picked = 'true';
+          btn.addEventListener('click', () => {
+            $$('.choices button', box).forEach(b=>b.dataset.picked='false');
+            btn.dataset.picked = 'true';
+            state.answers[q.id] = opt;
+            if(q.tag === 'vision'){ toggleVignette(); }
+          });
+          box.appendChild(btn);
+        });
+        wrap.appendChild(box);
+      }
+
+      if(q.type==='open'){
+        const row = document.createElement('div');
+        row.className = 'input-wrap';
+        const input = document.createElement('input');
+        input.className = 'input';
+        input.autocomplete = 'off';
+        input.placeholder = q.placeholder || '';
+        input.value = state.answers[q.id] || '';
+        input.addEventListener('input', e=> state.answers[q.id] = e.target.value);
+        row.appendChild(input);
+        if(q.hint){
+          const chip = document.createElement('span'); chip.className='chip'; chip.textContent=q.hint; row.appendChild(chip);
+        }
+        wrap.appendChild(row);
+      }
+
+      if(q.hint && q.type==='choice'){
+        const hint = document.createElement('p');
+        hint.className = 'narration';
+        hint.textContent = q.hint;
+        wrap.appendChild(hint);
+      }
+
+      card.innerHTML = '';
+      card.appendChild(wrap);
+      nextBtn.disabled = false;
+    }
+
+    function toggleVignette(){
+      vignette.classList.add('on');
+      setTimeout(()=>vignette.classList.remove('on'), 650);
+    }
+
+    function next(){
+      // validaciones simples
+      const q = questions[state.i];
+      if(q && q.type==='open' && q.required && !state.answers[q.id]){
+        footer.textContent = 'La voz espera una respuesta.';
+        return;
+      }
+      state.i = Math.min(state.i + 1, questions.length - 1);
+      render();
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function prev(){
+      state.i = Math.max(0, state.i - 1);
+      render();
+    }
+
+    function copyAnswers(){
+      const payload = {
+        meta: { when: new Date().toISOString(), duration_sec: Math.round((Date.now()-state.started)/1000) },
+        answers: state.answers
+      };
+      const text = JSON.stringify(payload, null, 2);
+      navigator.clipboard.writeText(text).then(()=>{
+        footer.textContent = 'Respuestas copiadas al portapapeles.';
+      }).catch(()=>{
+        footer.textContent = 'No se pudo copiar. Usa Descargar JSON.';
+      });
+    }
+
+    function downloadAnswers(){
+      const payload = {
+        meta: { when: new Date().toISOString(), duration_sec: Math.round((Date.now()-state.started)/1000) },
+        answers: state.answers
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      dlBtn.href = url;
+    }
+
+    // Netlify hidden form sync (opcional)
+    function syncNetlify(){
+      const form = $('#netlifyForm');
+      form.innerHTML = '';
+      Object.entries(state.answers).forEach(([k,v])=>{
+        const input = document.createElement('input');
+        input.type='hidden'; input.name=k; input.value=v;
+        form.appendChild(input);
+      });
+    }
+
+    // Eventos
+    nextBtn.addEventListener('click', ()=>{ syncNetlify(); downloadAnswers(); next(); });
+    prevBtn.addEventListener('click', prev);
+    copyBtn.addEventListener('click', copyAnswers);
+
+    // Audio toggle
+
+    // Inicio
+    render();
+  </script>
+</body>
+</html>
